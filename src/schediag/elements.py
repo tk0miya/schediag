@@ -18,7 +18,6 @@ import sys
 from datetime import date
 import blockdiag.elements
 from blockdiag.elements import *
-from blockdiag.utils.XY import XY
 
 
 def str2date(_date):

@@ -16,7 +16,7 @@
 import math
 from elements import *
 import diagparser
-from blockdiag.utils.XY import XY
+from blockdiag.utils import XY
 
 
 class DiagramTreeBuilder:
@@ -78,5 +78,6 @@ class ScreenNodeBuilder:
         DiagramNode.clear()
         DiagramEdge.clear()
         NodeGroup.clear()
+        Diagram.clear()
 
         return DiagramTreeBuilder().build(tree)

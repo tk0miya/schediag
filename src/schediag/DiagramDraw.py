@@ -15,69 +15,21 @@
 
 import sys
 import math
-from blockdiag.utils.XY import XY
+import blockdiag.DiagramDraw
+from blockdiag.utils import XY
 from blockdiag import noderenderer
 from blockdiag import imagedraw
 
 
-class DiagramDraw(object):
-    MetrixClass = None
-
-    @classmethod
-    def set_metrix_class(cls, MetrixClass):
-        cls.MetrixClass = MetrixClass
-
-    def __init__(self, format, diagram, filename=None, **kwargs):
-        self.format = format.upper()
-        self.diagram = diagram
-        self.fill = kwargs.get('fill', (0, 0, 0))
-        self.badgeFill = kwargs.get('badgeFill', 'pink')
-        self.font = kwargs.get('font')
-        self.filename = filename
-
-        if self.format == 'PNG' and kwargs.get('antialias'):
-            self.scale_ratio = 2
-        else:
-            self.scale_ratio = 1
-        self.metrix = self.MetrixClass(kwargs.get('basediagram', diagram),
-                                       scale_ratio=self.scale_ratio, **kwargs)
-
-        kwargs = dict(font=self.font,
-                      nodoctype=kwargs.get('nodoctype'),
-                      scale_ratio=self.scale_ratio)
-
-        if self.format == 'PNG':
-            self.shadow = kwargs.get('shadow', (64, 64, 64))
-        else:
-            self.shadow = kwargs.get('shadow', (0, 0, 0))
-
-        self.drawer = imagedraw.create(self.format, self.filename,
-                                       self.pagesize(), **kwargs)
-
-    @property
-    def nodes(self):
-        return self.diagram.nodes
-
-    @property
-    def groups(self):
-        return []
-
-    @property
-    def edges(self):
-        return []
-
+class DiagramDraw(blockdiag.DiagramDraw.DiagramDraw):
     def pagesize(self, scaled=False):
-        if scaled:
-            metrix = self.metrix
-        else:
-            metrix = self.metrix.originalMetrix()
-
         width = self.diagram.width
         height = self.diagram.height + 1
 
-        margin = metrix.pageMargin
-        return XY((width + 5) * metrix.cellSize * 2 + margin.x * 2,
-                  (height * 2 * metrix.cellSize * 2 + margin.y * 2))
+        m = self.metrics
+        margin = m.page_margin
+        return XY((width + 5) * m.cellsize * 2 + margin.x * 2,
+                  (height * 2 * m.cellsize * 2 + margin.y * 2))
 
     def draw(self, **kwargs):
         self._draw_background()
@@ -90,12 +42,12 @@ class DiagramDraw(object):
             self.node(node, **kwargs)
 
     def _draw_background(self):
-        metrix = self.metrix.originalMetrix()
+        metrics = self.metrics
 
         pagesize = self.pagesize()
-        margin = metrix.pageMargin
+        margin = metrics.page_margin
         for i in range(self.diagram.height + 2):
-            height = margin.y + i * metrix.cellSize * 4
+            height = margin.y + i * metrics.cellsize * 4
             _from = XY(margin.x, height)
             _to = XY(pagesize.x - margin.x, height)
 
@@ -106,8 +58,8 @@ class DiagramDraw(object):
         self.drawer.line(line, fill=self.fill)
 
         # right side of textbox
-        line = (XY(margin.x + 10 * metrix.cellSize, margin.y),
-                XY(margin.x + 10 * metrix.cellSize, pagesize.y - margin.y))
+        line = (XY(margin.x + 10 * metrics.cellsize, margin.y),
+                XY(margin.x + 10 * metrics.cellsize, pagesize.y - margin.y))
         self.drawer.line(line, fill=self.fill)
 
         # right side of frame
@@ -116,7 +68,7 @@ class DiagramDraw(object):
         self.drawer.line(line, fill=self.fill)
 
         for i in range(self.diagram.width - 1):
-            width = margin.x + (i + 1 + 5) * metrix.cellSize * 2
+            width = margin.x + (i + 1 + 5) * metrics.cellsize * 2
             _from = XY(width, margin.y)
             _to = XY(width, pagesize.y - margin.y)
 
@@ -127,37 +79,22 @@ class DiagramDraw(object):
             self.drawer.smoothCanvas()
 
     def node(self, node, **kwargs):
-        m = self.metrix
+        m = self.metrics
 
-        margin = m.pageMargin
-        top = margin.y + (node.xy.y + 1) * m.cellSize * 4
-        bottom = top + m.cellSize * 4
+        margin = m.page_margin
+        top = margin.y + (node.xy.y + 1) * m.cellsize * 4
+        bottom = top + m.cellsize * 4
 
         # textbox
-        textbox = (margin.x, top, margin.x + m.cellSize * 10, bottom)
-        self.drawer.textarea(textbox, node.label, fill=self.fill,
-                             font=self.font, fontsize=self.metrix.fontSize)
+        textbox = (margin.x, top, margin.x + m.cellsize * 10, bottom)
+        self.drawer.textarea(textbox, node.label, fill=self.fill)
 
-        width = margin.x + (node.xy.x + 5) * m.cellSize * 2
+        width = margin.x + (node.xy.x + 5) * m.cellsize * 2
         if node.milestone:
-            marker = (width, top, width + m.cellSize * 2, bottom)
-            self.drawer.textarea(marker, "@", fill=self.fill,
-                                 font=self.font, fontsize=self.metrix.fontSize)
+            marker = (width, top, width + m.cellsize * 2, bottom)
+            self.drawer.textarea(marker, "@", fill=self.fill)
         else:
-            right = width + node.width * m.cellSize * 2
-            line = (width, top + m.cellSize / 2,
-                    right, bottom - m.cellSize / 2)
+            right = width + node.width * m.cellsize * 2
+            line = (width, top + m.cellsize / 2,
+                    right, bottom - m.cellsize / 2)
             self.drawer.rectangle(line, fill='lightblue', outline=self.fill)
-
-    def save(self, filename=None, size=None):
-        if filename:
-            self.filename = filename
-
-            msg = "WARNING: DiagramDraw.save(filename) was deprecated.\n"
-            sys.stderr.write(msg)
-
-        return self.drawer.save(self.filename, size, self.format)
-
-
-from blockdiag.DiagramMetrix import DiagramMetrix
-DiagramDraw.set_metrix_class(DiagramMetrix)
